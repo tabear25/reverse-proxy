@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://tabear95.katakuma4625.workers.dev/https://api.notion.com"
+      "url": "https://reverse-proxy2notion.katakuma4625.workers.dev/api.notion.com"
     }
   ],
   "paths": {
@@ -23,7 +23,7 @@
             "name": "block_id",
             "in": "path",
             "required": true,
-            "description": "ID of the block or page to get the child process",
+            "description": "ID of the block or page ID to get the child process",
             "schema": {
               "type": "string"
             }
@@ -39,7 +39,7 @@
           {
             "name": "page_size",
             "in": "query",
-            "description": "The number of items returned per page",
+            "description": "The number of items from the block's children to return per page",
             "schema": {
               "type": "integer"
             }
@@ -277,6 +277,70 @@
           },
           "429": {
             "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/v1/pages/from_url": {
+      "get": {
+        "description": "Retrieve content of a Notion page by its URL",
+        "operationId": "getPageContentByUrl",
+        "tags": [
+          "Pages"
+        ],
+        "parameters": [
+          {
+            "name": "url",
+            "in": "query",
+            "required": true,
+            "description": "Full URL of the Notion page to retrieve (e.g., https://www.notion.so/takumanozaregoto/16cabb4699ff8188b5f1d78744d8fed6?v=...)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response with page content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": [
+                        "page"
+                      ]
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "properties": {
+                      "type": "object"
+                    },
+                    "content": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Page not found"
           },
           "500": {
             "description": "Internal Server Error"
