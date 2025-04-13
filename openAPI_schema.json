@@ -1,0 +1,162 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "reverse-proxy2notion",
+    "version": "1.0.0",
+    "description": "このOpenAPIスキーマは、Notion API に対するリバースプロキシを通じたエンドポイント定義です。主に3つの操作を扱っています：\n\n- ブロックの子要素の取得\n- ページやデータベースの全文検索\n- 特定データベースのクエリ（フィルタ・ソート付き）\n\nアクセス先は Notion の公式 API を https://reverse-proxy2notion.katakuma4625.workers.dev/ を通じて呼び出す構成になっており、CORS制限の回避などに使われます。"
+  },
+  "servers": [
+    {
+      "url": "https://reverse-proxy2notion.katakuma4625.workers.dev/https://api.notion.com",
+      "description": "のサーバーは、Notion公式API (https://api.notion.com) へのリクエストをリバースプロキシを介して送信するための中継サーバーです。CORS（クロスオリジン制限）回避のために使われます。クライアント（例：ブラウザ）から Notion API を直接叩けない場合でも、このサーバー経由で安全にアクセスできます。中継しているだけで、レスポンスの内容はNotion APIと基本的に同一です。"
+    }
+  ],
+  "paths": {
+    "/v1/blocks/{block_id}/children": {
+      "get": {
+        "summary": "指定したブロックIDまたはページIDに対応するNotionブロックの子要素（コンテンツ）を一覧取得します。",
+        "operationId": "getBlockChildren",
+        "parameters": [
+          {
+            "name": "block_id",
+            "in": "path",
+            "required": true,
+            "description": "取得対象の Notion ブロックやページのID。対象ブロックの子要素を取得する際に必要です。",
+            "schema": {
+              "type": "string",
+              "format": ""
+            }
+          },
+          {
+            "name": "start_cursor",
+            "in": "query",
+            "required": false,
+            "description": "ページネーションのためのカーソル。前回の取得結果の続きを取得したい場合に指定します。",
+            "schema": {
+              "type": "string",
+              "format": ""
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ブロックの子要素の取得に成功しました",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": { "description": "無効なリクエストです" },
+          "401": { "description": "認証に失敗しました" },
+          "404": { "description": "指定されたブロックが見つかりません" },
+          "429": { "description": "リクエスト回数の上限を超えました" },
+          "500": { "description": "サーバー内部でエラーが発生しました" }
+        }
+      }
+    },
+    "/v1/search": {
+      "post": {
+        "summary": "Notionワークスペース全体を対象にして、テキスト検索を実行します。",
+        "operationId": "searchNotionWorkspace",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "検索するキーワード"
+                  },
+                  "filter": {
+                    "type": "object",
+                    "description": "検索対象のタイプ（pageまたはdatabase）"
+                  },
+                  "sort": {
+                    "type": "object",
+                    "description": "ソート順"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "検索に成功しました",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": { "description": "無効なリクエストです" },
+          "401": { "description": "認証に失敗しました" },
+          "429": { "description": "リクエスト回数の上限を超えました" },
+          "500": { "description": "サーバー内部でエラーが発生しました" }
+        }
+      }
+    },
+    "/v1/databases/{database_id}/query": {
+      "post": {
+        "summary": "指定した Notion データベースIDに対して、フィルターやソート条件を指定してクエリを実行します。",
+        "operationId": "queryDatabase",
+        "parameters": [
+          {
+            "name": "database_id",
+            "in": "path",
+            "required": true,
+            "description": "対象となる Notion データベースのID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "filter": {
+                    "type": "object",
+                    "description": "データベースのフィルター条件"
+                  },
+                  "sorts": {
+                    "type": "array",
+                    "description": "ソート条件のリスト",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "start_cursor": {
+                    "type": "string",
+                    "description": "ページネーション用のカーソル"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "データベースクエリに成功しました",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": { "description": "無効なリクエストです" },
+          "401": { "description": "認証に失敗しました" },
+          "404": { "description": "指定されたデータベースが見つかりません" },
+          "429": { "description": "リクエスト回数の上限を超えました" },
+          "500": { "description": "サーバー内部でエラーが発生しました" }
+        }
+      }
+    }
+  }
+}
