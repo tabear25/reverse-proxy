@@ -1,61 +1,53 @@
-addEventListener('fetch', event => {
-  event.respondWith(handleRequest(event.request));
-});
+export default {
+  async fetch(request, env) {
+    const NOTION_TOKEN = env.NOTION_TOKEN;
+    const NOTION_VER   = "2022-06-28";
 
-async function handleRequest(request) {
-  try {
-    const url = new URL(request.url);
+    const cors = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, Notion-Version"
+    };
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 200, headers: cors });
+    }
 
-    // OPTIONS メソッドの処理（CORS対応）
-    if (request.method === 'OPTIONS') {
-      return new Response(null, {
+    const url     = new URL(request.url);
+    let   path    = url.pathname.replace(/\/+/g, "/").replace(/^\/+/, "");
+    let   segArr  = path.split("/").filter(Boolean);
+    if (segArr[0] === "v1") segArr.shift();
+
+    if (segArr.length === 0) {
+      return new Response(JSON.stringify({ ok: true, msg: "Notion proxy alive" }), {
         status: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Authorization, Content-Type, Notion-Version'
-        }
+        headers: { ...cors, "Content-Type": "application/json" }
       });
     }
 
-    // ルートパスの場合、使い方の説明を表示
-    if (url.pathname === '/' || url.pathname === '') {
-      return new Response(
-        `Usage: ${url.origin}/https://api.notion.com/<endpoint>`,
-        { status: 200 }
-      );
+    if (segArr[0] === "databases" && segArr.length === 2) {
+      segArr.push("query");                // /databases/<id> → /databases/<id>/query
     }
 
-    // ターゲットURLを、パス部分（先頭のスラッシュを除去）とクエリ文字列から組み立てる
-    const targetUrlStr = decodeURIComponent(url.pathname.substring(1)) + url.search;
-    let targetUrl;
-    try {
-      targetUrl = new URL(targetUrlStr);
-    } catch (err) {
-      return new Response("Invalid target URL", { status: 400 });
-    }
-    
-    // リクエストヘッダーのクローンと Notion-Version の追加
-    const headers = new Headers(request.headers);
-    if (targetUrl.hostname === 'api.notion.com' && !headers.has('Notion-Version')) {
-      headers.set('Notion-Version', '2021-05-13');
-    }
+    const notionEndpoint = `https://api.notion.com/v1/${segArr.join("/")}${url.search}`;
 
-    // ターゲットURLに対してリクエストを転送
-    const response = await fetch(targetUrl.href, {
+    const headers = {
+      Authorization: `Bearer ${NOTION_TOKEN}`,
+      "Notion-Version": NOTION_VER,
+      "Content-Type": request.headers.get("content-type") || "application/json"
+    };
+
+    const init = {
       method: request.method,
-      headers: headers,
-      body: request.body
+      headers,
+      body: ["GET", "HEAD"].includes(request.method) ? undefined : request.body
+    };
+
+    const res = await fetch(notionEndpoint, init);
+
+    return new Response(res.body, {
+      status: res.status,
+      statusText: res.statusText,
+      headers: { ...Object.fromEntries(res.headers), ...cors }
     });
-
-    // レスポンスに CORS ヘッダーを追加
-    const newResponse = new Response(response.body, response);
-    newResponse.headers.set('Access-Control-Allow-Origin', '*');
-    newResponse.headers.set('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS');
-    newResponse.headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, Notion-Version');
-
-    return newResponse;
-  } catch (e) {
-    return new Response("Internal Server Error", { status: 500 });
   }
-}
+};
