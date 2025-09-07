@@ -1,17 +1,18 @@
 openapi: 3.1.0
 info:
   title: Takuma Reading Notes API
-  version: 1.0.0
+  version: 1.0.3
   description: Takumaさんの読書ノートデータベース専用API（Kindleハイライト管理）
 servers:
   - url: https://reverse-proxy.katakuma4625.workers.dev/
     description: CloudflareワーカーURL（末尾にスラッシュを追加）
+
 paths:
   /databases/16cabb4699ff8188b5f1d78744d8fed6/query:
     post:
       operationId: queryReadingNotes
       summary: 読書ノートデータベースの検索
-      description: Kindleハイライトを含む読書ノートを検索・取得
+      description: Kindleハイライトを含む読書ノートを検索・取得（ページネーション対応）
       requestBody:
         required: false
         content:
@@ -24,9 +25,9 @@ paths:
                   description: 検索フィルター（書籍タイトル、著者、タグで絞り込み）
                 sorts:
                   type: array
+                  description: ソート条件（作成日順、更新日順など）
                   items:
                     type: object
-                  description: ソート条件（作成日順、更新日順など）
                 start_cursor:
                   type: string
                   description: ページネーション用カーソル
@@ -52,8 +53,10 @@ paths:
                       type: object
                   next_cursor:
                     type: string
+                    description: 次ページ取得用カーソル
                   has_more:
                     type: boolean
+                    description: 次ページが存在するか
         "400":
           description: 不正なリクエスト
         "401":
@@ -65,7 +68,7 @@ paths:
     get:
       operationId: getBookHighlights
       summary: 特定の本のハイライト詳細取得
-      description: 選択した本のページ内容（Kindleハイライト）を取得
+      description: 選択した本のページ内容（Kindleハイライト）を取得（ページネーション対応）
       parameters:
         - name: block_id
           in: path
@@ -73,11 +76,18 @@ paths:
           schema:
             type: string
           description: 本のページID（読書ノートの各エントリ）
+        - name: start_cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: ページネーション用カーソル
         - name: page_size
           in: query
           schema:
             type: integer
             default: 100
+            maximum: 100
           description: 取得するハイライト数
       responses:
         "200":
@@ -87,16 +97,25 @@ paths:
               schema:
                 type: object
                 properties:
+                  object:
+                    type: string
+                    enum: ["list"]
                   results:
                     type: array
                     items:
                       type: object
+                  next_cursor:
+                    type: string
+                    description: 次ページ取得用カーソル
+                  has_more:
+                    type: boolean
+                    description: 次ページが存在するか
 
   /search:
     post:
       operationId: searchReadingContent
       summary: 読書ノート全体からの内容検索
-      description: すべての本・ハイライトからキーワードで横断検索
+      description: すべての本・ハイライトからキーワードで横断検索（ページネーション対応）
       requestBody:
         required: true
         content:
@@ -117,14 +136,36 @@ paths:
                     value:
                       type: string
                       enum: ["page"]
+                start_cursor:
+                  type: string
+                  description: ページネーション用カーソル
                 page_size:
                   type: integer
                   default: 50
+                  maximum: 100
               required:
                 - query
       responses:
         "200":
           description: 横断検索結果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: string
+                    enum: ["list"]
+                  results:
+                    type: array
+                    items:
+                      type: object
+                  next_cursor:
+                    type: string
+                    description: 次ページ取得用カーソル
+                  has_more:
+                    type: boolean
+                    description: 次ページが存在するか
 
 components:
   securitySchemes:
